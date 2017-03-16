@@ -1,4 +1,4 @@
-# Wikipedia-Classification-Project
+# Wikipedia-Text-Mining-Clustering
 
 Purpose:
 The purpose of this project is to mine data from the [Wikipedia](http://en.wikipedia.org/wiki/) website and perform classification.
