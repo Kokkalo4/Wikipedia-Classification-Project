@@ -1,0 +1,132 @@
+---
+title: "Wikipedia 2"
+output: html_document
+---
+
+#Table of Contents:
+
+- [Introduction](#Introduction.)
+- [Loading packages](#Loading Packages.)
+- [Reading the data](#Reading wikipedia.)
+- [Transforming the data](#Transforming Data.)
+- [Further Transformations.](#Further transformations.)
+- [Visualizing the data](#Visualizing variables.)
+
+<div id='Introduction.'/>
+#Introduction.
+
+The purpose of this project is to mine data from the [Wikipedia](http://en.wikipedia.org/wiki/) website and perform classification.
+This project was performed with the guidance of the following websites:
+[Manipulate clusters of texts with R](https://dzone.com/articles/manipulate-clusters-of-texts)
+[R : Categorization / Clustering Of Wikipedia Articles Using R](http://brazenly.blogspot.gr/2015/02/r-categorization-clustering-of.html)
+[Text mining in R - Automatic categorization of Wikipedia articles](https://www.r-bloggers.com/text-mining-in-r-automatic-categorization-of-wikipedia-articles/)
+
+<div id='Loading Packages.'/>
+#Loading Packages.
+
+The first step towards analyzing the data is Loading the packages:
+
+```{r message=FALSE}
+library(tm)
+library(stringi)
+library(proxy)
+library(wordcloud)
+```
+
+<div id='Reading wikipedia.'/>
+#Reading wikipedia.
+
+The next step is reading wikipedia.
+To perform this analysis I chose 9 articles of 3 different topics. The articles are:
+- From Geography: Alaska, California, Florida
+- From Mathematics: Square, Rectangular, Rhombus
+- From NBA: Bulls, Bucks, Spurs
+And then set up the connection with wikipedia and pulled all information:
+
+```{r}
+wiki <- "http://en.wikipedia.org/wiki/"
+titles <- c("Florida",
+           "California",
+           "Alaska",
+           "Rectangular", "Square", "Rhombus",
+           "Bulls", "Bucks", "Spurs")
+articles <- character(length(titles))
+for (i in 1:length(titles)) {
+  articles[i] = stri_flatten(readLines(stri_paste(wiki, titles[i])), col = " ")
+}
+```
+
+<div id='Transforming Data.'/>
+#Transforming Data.
+
+Then we transform the "articles" into a Corpus.
+
+```{r}
+docs <- Corpus(VectorSource(articles))
+```
+
+Following the conversion to Corpus we have to clean out all unnecessary terms. These include:<br>
+- Replace characters like + , . , ? etc with Space  " "<br>
+- Replace tab characters (\t) with Space<br>
+- Remove extra whitespaces from the documents.<br>
+- Remove from the documents words which we find redundant for text.<br>
+- Remove English "stopwords".<br> 
+- Remove punctuation marks.<br>
+- Transform characters to lower case.<br>
+- Convert previous result to "PlainTextDocument".<br>
+
+```{r}
+docs <- tm_map(docs, function(x) stri_replace_all_regex(x, "<.+?>", " ")) 
+docs <- tm_map(docs, function(x) stri_replace_all_fixed(x, "\t", " ")) 
+docs <- tm_map(docs, stripWhitespace) 
+docs <- tm_map(docs, removeWords, stopwords("english")) 
+docs <- tm_map(docs, removePunctuation) 
+docs <- tm_map(docs, tolower) 
+docs <- tm_map(docs, PlainTextDocument) 
+```
+
+<div id='Further transformations.'/>
+#Further transformations.
+After Removing all unnecessary terms we can transform the Corpus above into a Document Term Matrix.
+
+```{r}
+docsTDM <- DocumentTermMatrix(docs)
+```
+
+In order to proceed with our analysis we have to convert the Document Term Matrix into a matrix.
+
+```{r}
+docsTDM2 <- as.matrix(docsTDM)
+```
+
+Then we check the dimensions of the matrix
+
+```{r}
+dim(docsTDM2) 
+frequency <- colSums(docsTDM2)
+frequency <- sort(frequency, decreasing=TRUE)
+mots=frequency[frequency>20]
+s=docsTDM2[1,which(colnames(docsTDM2) %in% names(mots))]
+for(i in 2:nrow(docsTDM2)) s=cbind(s,docsTDM2[i,which(colnames(docsTDM2) %in% names(mots))])
+colnames(s) <- titles
+```
+
+<div id='Visualizing variables.'/>
+#Visualizing variables.
+
+Then we can use a PCA to visualise the 'variables':
+
+```{r include= FALSE}
+library(FactoMineR)
+```
+```{r}
+PCA(s)
+```
+
+Finally, we perform text classification with hclust() function and plot them with plot() function.
+
+```{r}
+s0=s/apply(s,1,sd)
+h <- hclust(dist(t(s0)), method = "ward.D")
+plot(h, labels = titles, sub = "")
+```
